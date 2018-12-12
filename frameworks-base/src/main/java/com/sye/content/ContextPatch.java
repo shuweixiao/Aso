@@ -16,8 +16,8 @@ import android.os.Build;
 import android.os.Process;
 import android.view.inputmethod.InputMethodManager;
 
-import com.xmois.os.Storage;
-import com.xmois.security.MD5;
+import com.sye.os.Storage;
+import com.sye.security.MD5;
 
 import java.io.File;
 import java.io.IOException;
