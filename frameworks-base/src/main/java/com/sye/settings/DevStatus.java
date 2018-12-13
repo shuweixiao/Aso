@@ -25,9 +25,6 @@ import com.sye.security.action.SetSystemPropertyAction;
 import com.sye.util.PhoneUtils;
 import com.sye.util.StringUtils;
 
-import java.io.FileReader;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -81,7 +78,6 @@ public final class DevStatus {
     private final int densityDpi;
     private final int[] displayPixels = new int[2];
 
-
     private String androidId;
     private String deviceId;
     private String country;
@@ -109,10 +105,15 @@ public final class DevStatus {
         final DisplayMetrics metrics = this.mAppContext.getResources().getDisplayMetrics();
         this.density = metrics.density;
         this.densityDpi = getVersion() > 3 ? metrics.densityDpi : 120;
-        this.location();
+        this.initLocation();
     }
 
 
+    /**
+     * Gets the WebView's user-agent string.
+     *
+     * @return
+     */
     public String getUserAgent() {
         if (mUserAgent == null) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
@@ -168,43 +169,80 @@ public final class DevStatus {
     }
 
     public String getAndroidId() {
-        if (StringUtils.nonEmpty(androidId))
-            return androidId;
         try {
-            this.androidId = android.provider.Settings.Secure.getString(
+            return android.provider.Settings.Secure.getString(
                     this.mAppContext.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
         } catch (Exception e) {
 
         }
-        return StringUtils.nonEmpty(androidId) ? androidId : "";
+        return null;
     }
 
-    @SuppressLint("MissingPermission")
+    /**
+     * Returns the unique device ID, for example, the IMEI for GSM and the MEID
+     * or ESN for CDMA phones. Return null if device ID is not available.
+     *
+     * @return
+     */
     public String getDeviceId() {
-        if (StringUtils.nonEmpty(deviceId))
-            return deviceId;
+        return getDeviceId(null);
+    }
 
+    /**
+     * Returns the unique device ID, for example, the IMEI for GSM and the MEID
+     * or ESN for CDMA phones. Return null if device ID is not available.
+     *
+     * @param defVal
+     * @return
+     */
+    @SuppressLint("MissingPermission")
+    public String getDeviceId(String defVal) {
         try {
-            TelephonyManager manager = (TelephonyManager) mAppContext.getSystemService(Context.TELEPHONY_SERVICE);
-            if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE))
-                this.deviceId = manager.getDeviceId();
+            if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE)) {
+                return ((TelephonyManager) mAppContext.getSystemService(Context.TELEPHONY_SERVICE)).getDeviceId();
+            }
         } catch (Exception e) {
 
         }
-        return StringUtils.isEmpty(this.deviceId) ? "" : this.deviceId;
+        return defVal;
     }
 
-    @SuppressLint("MissingPermission")
+    /**
+     * Returns the unique subscriber ID, for example, the IMSI for a GSM phone.
+     * Return null if it is unavailable
+     *
+     * @return
+     */
     public String getSubscriberId() {
-        if (StringUtils.isEmpty(subscriberId))
-            try {
-                if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE))
-                    this.subscriberId = ((TelephonyManager) mAppContext
-                            .getSystemService(Context.TELEPHONY_SERVICE)).getSubscriberId();
-            } catch (Exception e) {
+        return getSubscriberId(null);
+    }
 
-            }
-        return subscriberId;
+    /**
+     * Returns the unique subscriber ID, for example, the IMSI for a GSM phone.
+     * Return null if it is unavailable
+     *
+     * @param defVal
+     * @return
+     */
+    @SuppressLint("MissingPermission")
+    public String getSubscriberId(String defVal) {
+        try {
+            if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE))
+                return ((TelephonyManager) mAppContext.getSystemService(Context.TELEPHONY_SERVICE)).getSubscriberId();
+        } catch (Exception e) {
+
+        }
+        return defVal;
+    }
+
+    /**
+     * Returns the phone number string for line 1, for example, the MSISDN
+     * for a GSM phone. Return null if it is unavailable
+     *
+     * @return
+     */
+    public String getPhoneNumber() {
+        return getPhoneNumber(null);
     }
 
     /**
@@ -214,18 +252,17 @@ public final class DevStatus {
      * @return
      */
     @SuppressLint("MissingPermission")
-    public String getPhoneNumber() {
-        if (StringUtils.isEmpty(phoneNumber))
-            try {
-                if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_SMS) ||
-                        ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE)) {
-                    this.phoneNumber = ((TelephonyManager) mAppContext
-                            .getSystemService(Context.TELEPHONY_SERVICE)).getLine1Number();
-                }
-            } catch (Exception e) {
-
+    public String getPhoneNumber(String defVal) {
+        try {
+            if (ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_SMS) ||
+                    ContextPatch.checkSelfPermissions(mAppContext, Manifest.permission.READ_PHONE_STATE)) {
+                return ((TelephonyManager) mAppContext
+                        .getSystemService(Context.TELEPHONY_SERVICE)).getLine1Number();
             }
-        return phoneNumber;
+        } catch (Exception e) {
+
+        }
+        return defVal;
     }
 
     /**
@@ -235,13 +272,24 @@ public final class DevStatus {
      * @return
      */
     public String getSimOperator() {
+        return getSimOperator(null);
+    }
+
+    /**
+     * Returns the MCC+MNC (mobile country code + mobile network code) of the
+     * provider of the SIM. 5 or 6 decimal digits.
+     *
+     * @param defVal
+     * @return
+     */
+    public String getSimOperator(String defVal) {
         try {
             return ((TelephonyManager) mAppContext
                     .getSystemService(Context.TELEPHONY_SERVICE)).getSimOperator();
         } catch (Exception e) {
 
         }
-        return null;
+        return defVal;
     }
 
     /**
@@ -250,33 +298,52 @@ public final class DevStatus {
      * @return
      */
     public String getNetworkOperator() {
-        String value = null;
+        return getNetworkOperator(null);
+    }
+
+    /**
+     * Returns the numeric name (MCC+MNC) of current registered operator.
+     *
+     * @param defVal
+     * @return
+     */
+    public String getNetworkOperator(String defVal) {
         try {
-            value = ((TelephonyManager) this.mAppContext
+            return ((TelephonyManager) this.mAppContext
                     .getSystemService(Context.TELEPHONY_SERVICE)).getNetworkOperator();
         } catch (Exception var2) {
 
         }
-        return StringUtils.nonEmpty(value) ? value : "";
+        return defVal;
     }
 
     public int getNetworkType() {
-        int value = 0;
         try {
-            value = NetworkCompat.getNetworkType(mAppContext);
+            return NetworkCompat.getNetworkType(mAppContext);
         } catch (Exception e) {
 
         }
-        return value;
+        return 0;
     }
 
+    /**
+     * Returns the MAC address of the WLAN interface
+     *
+     * @return
+     */
     public String getMediaAccessControl() {
-        if (StringUtils.isEmpty(mediaAccessControl))
-            mediaAccessControl = getMediaAccessControl0();
-        return mediaAccessControl;
+        return StringUtils.isEmpty(mediaAccessControl) ?
+                mediaAccessControl = getMediaAccessControl0() : mediaAccessControl;
     }
 
 
+    /**
+     * Returns the ISO country code equivalent for the SIM provider's country code.
+     * Or returns the country code for this locale, or {@code ""} if this locale
+     * doesn't correspond to a specific country.
+     *
+     * @return
+     */
     public String getCountry() {
         if (StringUtils.isEmpty(country))
             try {
@@ -292,53 +359,60 @@ public final class DevStatus {
         return country;
     }
 
+    /**
+     * Returns the language code for this {@code Locale} or the empty string if no language
+     * was set.
+     *
+     * @return
+     */
     public String getLanguage() {
-        if (StringUtils.isEmpty(language))
-            language = Locale.getDefault().getLanguage().toLowerCase();
-        return language;
+        return Locale.getDefault().getLanguage().toLowerCase();
     }
 
     @SuppressLint("MissingPermission")
     public Map<String, String> getLacAndCeilId() {
-        final String operator = this.getNetworkOperator();
-        final HashMap<String, String> hashMap = new HashMap();
-        if (operator != null && operator.length() > 0 && !"null".equalsIgnoreCase(operator)) {
-            try {
-                int intV1 = Integer.parseInt(operator.substring(0, 3));
-                int intV2 = Integer.parseInt(operator.substring(3));
-                if (intV1 == 460) {
-                    intV1 = 0;
+        try {
+            final TelephonyManager tm = (TelephonyManager)
+                    this.mAppContext.getSystemService(Context.TELEPHONY_SERVICE);
+
+            final String operator = tm.getSimOperator();
+            if (operator != null && operator.length() >= 5) {
+                final HashMap<String, String> hashMap = new HashMap();
+                int mcc = Integer.parseInt(operator.substring(0, 3));
+                int mnc = Integer.parseInt(operator.substring(3));
+                if (mcc == 460) {
+                    mcc = 0;
                     int t = 0;
-                    TelephonyManager tm = (TelephonyManager)
-                            this.mAppContext.getSystemService(Context.TELEPHONY_SERVICE);
-                    if (intV2 != 3 && intV2 != 5) {
+                    if (mnc != 3 && mnc != 5) {
                         GsmCellLocation gsmc;
                         if ((gsmc = (GsmCellLocation) tm.getCellLocation()) != null) {
-                            intV1 = gsmc.getLac();
+                            mcc = gsmc.getLac();
                             t = gsmc.getCid();
                         }
                     } else {
                         CdmaCellLocation cdmac;
-                        intV1 = (cdmac = (CdmaCellLocation) tm.getCellLocation()).getNetworkId();
+                        mcc = (cdmac = (CdmaCellLocation) tm.getCellLocation()).getNetworkId();
                         t = cdmac.getBaseStationId();
                     }
 
-                    hashMap.put("lac", "" + intV1);
+                    hashMap.put("lac", "" + mcc);
                     hashMap.put("cellid", "" + t);
                 }
-            } catch (Throwable t) {
 
+                return hashMap;
             }
+        } catch (Throwable t) {
+
         }
-        return hashMap;
+        return null;
     }
 
 
     @SuppressLint("MissingPermission")
-    private void location() {
+    private void initLocation() {
         try {
-            final LocationManager manager;
-            if ((manager = (LocationManager) mAppContext.getSystemService(Context.LOCATION_SERVICE)) != null) {
+            final LocationManager lm;
+            if ((lm = (LocationManager) mAppContext.getSystemService(Context.LOCATION_SERVICE)) != null) {
                 Criteria criteria = new Criteria();
                 criteria.setAccuracy(2);
                 criteria.setAltitudeRequired(false);
@@ -347,22 +421,22 @@ public final class DevStatus {
                 criteria.setPowerRequirement(1);
 
                 try {
-                    String provider = manager.getBestProvider(criteria, true);
+                    String provider = lm.getBestProvider(criteria, true);
                     Location location;
 
-                    if ((location = manager.getLastKnownLocation(provider)) != null) {
+                    if ((location = lm.getLastKnownLocation(provider)) != null) {
                         this.locationLatitude = location.getLatitude();
                         this.locationLongitude = location.getLongitude();
                         this.locationAccuracy = location.getAccuracy();
                     } else {
-                        manager.requestLocationUpdates(provider, 2000l, 7000f, new LocationListener() {
+                        lm.requestLocationUpdates(provider, 2000l, 7000f, new LocationListener() {
                             @Override
                             public void onLocationChanged(Location location) {
                                 try {
                                     locationLatitude = location.getLatitude();
                                     locationLongitude = location.getLongitude();
                                     locationAccuracy = location.getAccuracy();
-                                    manager.removeUpdates(this);
+                                    lm.removeUpdates(this);
                                 } catch (Exception e) {
 
                                 }
@@ -411,38 +485,16 @@ public final class DevStatus {
         }
 
         // By java api
-        String macSerial = getMacByJavaAPI();
-        if (macSerial != null && macSerial.contains(":"))
-            return macSerial;
+        String macSerial;
+        try {
+            if ((macSerial = getMacByJavaAPI()) != null && macSerial.contains(":"))
+                return macSerial;
+        } catch (Exception e) {
+
+        }
 
         // By system config file
-        String str = "";
-        try {
-            Process pp = Runtime.getRuntime().exec("cat /sys/class/net/wlan0/address ");
-            InputStreamReader ir = new InputStreamReader(pp.getInputStream());
-            LineNumberReader input = new LineNumberReader(ir);
-
-            for (; null != str; ) {
-                str = input.readLine();
-                if (str != null) {
-                    macSerial = str.trim();// 去空格
-                    break;
-                }
-            }
-        } catch (Exception ex) {
-
-        }
-
-        if (macSerial != null && macSerial.length() > 0)
-            return macSerial;
-
-        try {
-            return loadFileAsString("/sys/class/net/eth0/address")
-                    .toUpperCase().substring(0, 17);
-        } catch (Exception e) {
-        }
-
-        return null;
+        return NetworkCompat.getMediaAccessControl();
     }
 
     @TargetApi(9)
@@ -469,19 +521,6 @@ public final class DevStatus {
         } catch (Throwable e) {
         }
         return null;
-    }
-
-
-    private static String loadFileAsString(String fileName) throws Exception {
-        final FileReader reader = new FileReader(fileName);
-        final StringBuilder builder = new StringBuilder();
-        char[] buffer = new char[4096];
-        int len;
-        while ((len = reader.read(buffer)) >= 0) {
-            builder.append(buffer, 0, len);
-        }
-        reader.close();
-        return builder.toString();
     }
 
     private static void hookWebView() {

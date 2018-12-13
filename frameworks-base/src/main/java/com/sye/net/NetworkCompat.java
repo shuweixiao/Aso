@@ -165,9 +165,8 @@ public class NetworkCompat {
     }
 
 
-    public static String getMediaAccessControl(Context context) {
+    public static String getMediaAccessControl() {
         try {
-            String str = "";
             String macSerial = "";
             try {
                 Process pp = Runtime.getRuntime().exec(
@@ -175,7 +174,7 @@ public class NetworkCompat {
                 InputStreamReader ir = new InputStreamReader(pp.getInputStream());
                 LineNumberReader input = new LineNumberReader(ir);
 
-                for (; null != str; ) {
+                for (String str = ""; null != str; ) {
                     str = input.readLine();
                     if (str != null) {
                         macSerial = str.trim();// 去空格
@@ -185,14 +184,12 @@ public class NetworkCompat {
             } catch (Exception ex) {
 
             }
-            if (macSerial == null || "".equals(macSerial)) {
-                try {
-                    return readAsString("/sys/class/net/eth0/address")
-                            .toUpperCase().substring(0, 17);
-                } catch (Exception e) {
-                }
-            }
 
+            if (macSerial != null && macSerial.length() > 0)
+                return macSerial;
+
+            return readAsString("/sys/class/net/eth0/address")
+                    .toUpperCase().substring(0, 17);
         } catch (Exception e) {
 
         }
