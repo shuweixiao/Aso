@@ -153,7 +153,6 @@ public class FileUtils {
             fis.close();
             return new String(bytes, defaultCharset);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -218,6 +217,14 @@ public class FileUtils {
             }
         }
         return false;
+    }
+
+    public static File buildPath(File base, String... segments) {
+        File cur = base;
+        for (String segment : segments)
+            cur = cur == null ? new File(segment) : new File(cur, segment);
+
+        return cur;
     }
 
     private static boolean mkdirs(File file) {

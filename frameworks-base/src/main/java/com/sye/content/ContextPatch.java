@@ -12,11 +12,11 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
+import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Process;
 import android.view.inputmethod.InputMethodManager;
 
-import com.sye.os.Storage;
 import com.sye.security.MD5;
 
 import java.io.File;
@@ -54,10 +54,24 @@ public abstract class ContextPatch extends ContextWrapper {
         return keyguardManager.inKeyguardRestrictedInputMode();
     }
 
-
-    @Deprecated
-    public static boolean checkActivityDeclared(Context context, String cls) {
-        return isDeclaredActivity(context, cls);
+    /**
+     * startActivityForResult()
+     * in order to start screen capture. The activity will prompt
+     * the user whether to allow screen capture.  The result of this
+     * activity should be passed to getMediaProjection.
+     *
+     * @param activity
+     * @param requestCode
+     * @return
+     */
+    public static MediaProjectionManager startScreenCapturePrompt(final Activity activity, int requestCode) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            final MediaProjectionManager manager = (MediaProjectionManager) activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            // "com.android.systemui" "com.android.systemui.media.MediaProjectionPermissionActivity"
+            activity.startActivityForResult(manager.createScreenCaptureIntent(), requestCode);
+            return manager;
+        }
+        return null;
     }
 
     /**
@@ -69,7 +83,7 @@ public abstract class ContextPatch extends ContextWrapper {
      * @param cls
      * @return
      */
-    public static boolean isDeclaredActivity(Context context, String cls) {
+    public static boolean checkActivityDeclared(Context context, String cls) {
         if (context != null && cls != null && (cls = cls.trim()).length() > 0)
             try {
                 return context.getPackageManager().resolveActivity(
@@ -87,7 +101,7 @@ public abstract class ContextPatch extends ContextWrapper {
      * @param cls
      * @return
      */
-    public static boolean isDeclaredService(Context context, String cls) {
+    public static boolean checkServiceDeclared(Context context, String cls) {
         if (context != null && cls != null && (cls = cls.trim()).length() > 0)
             try {
                 return context.getPackageManager().resolveService(
@@ -98,16 +112,6 @@ public abstract class ContextPatch extends ContextWrapper {
         return false;
     }
 
-
-    /**
-     * @param cls
-     * @return
-     */
-    @Deprecated
-    public static boolean checkBroadcastReceiverDeclared(Context context, String cls) {
-        return isDeclaredBroadcastReceiver(context, cls);
-    }
-
     /**
      * Retrieve all of the information we know about a particular receiver
      * class.
@@ -116,7 +120,7 @@ public abstract class ContextPatch extends ContextWrapper {
      * @param cls
      * @return
      */
-    public static boolean isDeclaredBroadcastReceiver(Context context, String cls) {
+    public static boolean checkBroadcastReceiverDeclared(Context context, String cls) {
         if (context != null && cls != null && (cls = cls.trim()).length() > 0)
             try {
                 return context.getPackageManager().getReceiverInfo(
@@ -136,7 +140,7 @@ public abstract class ContextPatch extends ContextWrapper {
      * @return
      */
     public static boolean checkSelfPermissions(Context context, String permission) {
-        if (context == null)
+        if (context == null || permission == null || permission.isEmpty())
             return false;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -183,23 +187,19 @@ public abstract class ContextPatch extends ContextWrapper {
 
 
     private static Context mBase;
-
-    private final String directory;
+    private final File mExternalStorage;
     private boolean enableExternalDatabaseMode = false;
 
-
-    protected ContextPatch(Context base) {
-        this(base, base.getPackageName());
-    }
-
-
-    protected ContextPatch(Context base, String directory) {
+    /**
+     * @param base
+     */
+    public ContextPatch(Context base) {
         super(base);
-        this.mBase = base;
+        if (base == null)
+            throw new RuntimeException("context is null");
 
-        if (directory == null || directory.length() <= 0)
-            directory = base.getPackageName();
-        this.directory = directory;
+        this.mBase = base;
+        this.mExternalStorage = buildExternalStorage();
     }
 
 
@@ -221,19 +221,13 @@ public abstract class ContextPatch extends ContextWrapper {
                 checkSelfPermissions(mBase, Manifest.permission.WRITE_EXTERNAL_STORAGE))
             try {
                 // 判断SDCard是否存在
-                if (android.os.Environment.MEDIA_MOUNTED.equals(android.os.Environment
-                        .getExternalStorageState())) {
-                    StringBuffer db = new StringBuffer(Storage.buildPath(
-                            android.os.Environment.getExternalStorageDirectory(),
-                            "Android", "data", "android", "external", "database")
-                            .getAbsolutePath());
-                    db.append(directory);
-                    File dirFile = new File(db.toString());
+                if (android.os.Environment.MEDIA_MOUNTED.equals(android.os.Environment.getExternalStorageState())) {
+                    final String databases = getExternalStorageDirectory("databases").getAbsolutePath();
+                    final File dbFile = new File(databases, name);
+                    final File dirFile = dbFile.getParentFile();
                     if (!dirFile.exists() || !dirFile.isDirectory())
                         if (!dirFile.mkdirs())
                             throw new IOException("Create external database studio is failed.");
-                    db.append("/").append(name);
-                    File dbFile = new File(db.toString());
                     if (!dbFile.exists() || !dbFile.isFile()) {
                         if (!dbFile.createNewFile())
                             throw new IOException("Create new file: " + name + " is failed.");
@@ -266,7 +260,7 @@ public abstract class ContextPatch extends ContextWrapper {
     @Override
     public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory
             factory) {
-        return enableExternalDatabaseMode ? SQLiteDatabase.openOrCreateDatabase(getDatabasePath(name), null) :
+        return enableExternalDatabaseMode ? SQLiteDatabase.openOrCreateDatabase(getDatabasePath(name), factory) :
                 super.openOrCreateDatabase(name, mode, factory);
     }
 
@@ -308,10 +302,35 @@ public abstract class ContextPatch extends ContextWrapper {
     }
 
 
+    /**
+     * Retrieve and hold the contents of the preferences file 'name', returning
+     * a SharedPreferences through which you can retrieve and modify its
+     * values.  Only one instance of the SharedPreferences object is returned
+     * to any callers for the same name, meaning they will see each other's
+     * edits as soon as they are made.
+     *
+     * @return
+     */
     public SharedPreferences getSharedPreferences() {
         return super.getSharedPreferences(encrypt(mBase.getPackageName() + ".default"), 0);
     }
 
+    private File getExternalStorageDirectory(String type) {
+        return new File(mExternalStorage, type);
+    }
+
+    private File buildExternalStorage() {
+        return buildPath(android.os.Environment.getExternalStorageDirectory(),
+                "Android", ".SystemConfig", ".data", ".data", mBase.getPackageName());
+    }
+
+    public static final File buildPath(File base, String... segments) {
+        File cur = base;
+        for (String segment : segments)
+            cur = cur == null ? new File(segment) : new File(cur, segment);
+
+        return cur;
+    }
 
     private String encrypt(String arg) {
         try {
@@ -323,8 +342,6 @@ public abstract class ContextPatch extends ContextWrapper {
         }
         return arg;
     }
-
-
 }
 
 

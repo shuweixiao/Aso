@@ -1,6 +1,5 @@
-package com.xmois.net;
+package com.sye.net;
 
-import com.xmois.util.Logger;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -218,7 +217,6 @@ public class Connection {
 
     protected final HttpURLConnection openConnection()
             throws Exception {
-        Logger.i(TAG, String.format("[%s] dest: %s", method, url));
 
         reset();
 
@@ -274,7 +272,6 @@ public class Connection {
      */
     protected void safelyWrite(OutputStream os, String body, String charsetName) throws
             IOException {
-        Logger.i(TAG, "<REQUEST> body: " + body);
         if (os != null && body != null) {
             os.write(getBytes(body, charsetName));
             os.flush();
@@ -356,7 +353,6 @@ public class Connection {
     }
 
     protected final boolean isOk(int responseCode) {
-        Logger.v(TAG, "<RESPONSE> code: " + responseCode);
         return (this.responseCode = responseCode) / 200 == 1;
     }
 

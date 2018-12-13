@@ -1,4 +1,4 @@
-package com.xmois.net.util;
+package com.sye.net.util;
 
 import java.util.regex.Pattern;
 

@@ -30,6 +30,8 @@ public final class Build {
      */
     public static final String VERSION_NAME = "1.0.1.184848A";
 
+    public static final int SUPPORTED = 0;
+
 
     /**
      *
