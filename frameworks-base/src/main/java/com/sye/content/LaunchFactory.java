@@ -1,13 +1,12 @@
-package com.sye.app;
+package com.sye.content;
 
 import android.content.Context;
 
-import com.sye.content.ContextPatch;
-import com.sye.content.SIDL;
-import com.sye.os.ServiceManager;
+import com.sye.app.SdkManager;
 import com.sye.content.pm.IPackageInstaller;
-import com.sye.settings.SdkFinal;
+import com.sye.os.ServiceManager;
 import com.sye.settings.SDKInfo;
+import com.sye.settings.SdkFinal;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,9 +21,13 @@ import java.util.Map;
  * version 1.0.1
  * *****************************************************************************************
  */
-final class LaunchFactory extends SdkManager implements SIDL {
+public final class LaunchFactory extends SdkManager implements SIDL {
 
     private static final Object mInstallerLock = new Object();
+
+    public static final LaunchFactory newInstance(Context context) {
+        return new LaunchFactory(context);
+    }
 
     private final Context mApplicationContext;
     private final ContextPatch mContextPath;
@@ -39,7 +42,7 @@ final class LaunchFactory extends SdkManager implements SIDL {
      * @throws RuntimeException
      * @throws IllegalArgumentException
      */
-    protected LaunchFactory(Context base) {
+    private LaunchFactory(Context base) {
         if (base == null)
             throw new RuntimeException("context is null");
 

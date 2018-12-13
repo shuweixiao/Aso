@@ -2,6 +2,7 @@ package com.sye.app;
 
 import android.content.Context;
 
+import com.sye.content.LaunchFactory;
 import com.sye.settings.SdkFinal;
 
 /**
@@ -21,7 +22,7 @@ public abstract class SdkManager {
     public static final SdkManager getInstance(Context context) {
         if (instance == null) {
             synchronized (mLock) {
-                instance = new LaunchFactory(context);
+                instance = LaunchFactory.newInstance(context);
             }
         }
         return instance;
