@@ -26,13 +26,14 @@ import java.io.File;
 public final class SdkFinal extends SDKInfo {
 
 
+    public static final String getVersionName() {
+        return Build.VERSION_NAME.substring(0, Build.VERSION_NAME.lastIndexOf("."));
+    }
+
     public static final int getVersionCode() {
         return Build.VERSION_CODE;
     }
 
-    public static final String getVersionName() {
-        return Build.VERSION_NAME;
-    }
 
     public static final String format() {
         return Build.format();

@@ -2,6 +2,8 @@ package com.sye.content;
 
 import android.content.Context;
 
+import com.sye.settings.SdkFinal;
+
 /**
  * *****************************************************************************************
  * Created by super.dragon  on 12/13/2018 15:08
@@ -23,6 +25,14 @@ public abstract class SdkManager {
             }
         }
         return instance;
+    }
+
+    public static final String getVersionName() {
+        return SdkFinal.getVersionName();
+    }
+
+    public static final int getVersionCode() {
+        return SdkFinal.getVersionCode();
     }
 
     public abstract SdkManager init();
