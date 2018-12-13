@@ -1,4 +1,4 @@
-package com.sye.content;
+package com.sye.os;
 
 import android.content.Context;
 
@@ -13,9 +13,9 @@ import com.sye.server.IService;
  * version 1.0.1
  * *****************************************************************************************
  */
-public final class SdkServiceManager extends IService {
+public final class ServiceManager extends IService {
 
-    public SdkServiceManager(Context context) {
+    public ServiceManager(Context context) {
         super(context);
     }
 

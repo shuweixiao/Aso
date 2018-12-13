@@ -1,4 +1,4 @@
-package com.sye.content;
+package com.sye.app;
 
 import com.sye.settings.SdkFinal;
 

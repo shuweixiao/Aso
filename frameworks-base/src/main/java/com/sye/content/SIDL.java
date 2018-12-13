@@ -12,6 +12,7 @@ import com.sye.settings.SDKInfo;
  * version 1.0.1
  * *****************************************************************************************
  */
+
 public interface SIDL {
 
     public ContextPatch getContextPatch();

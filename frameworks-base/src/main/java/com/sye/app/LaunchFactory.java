@@ -1,7 +1,10 @@
-package com.sye.content;
+package com.sye.app;
 
 import android.content.Context;
 
+import com.sye.content.ContextPatch;
+import com.sye.content.SIDL;
+import com.sye.os.ServiceManager;
 import com.sye.content.pm.IPackageInstaller;
 import com.sye.settings.SdkFinal;
 import com.sye.settings.SDKInfo;
@@ -26,7 +29,7 @@ final class LaunchFactory extends SdkManager implements SIDL {
     private final Context mApplicationContext;
     private final ContextPatch mContextPath;
 
-    private final SdkServiceManager mServiceManager;
+    private final ServiceManager mServiceManager;
     private IPackageInstaller mPackageInstaller;
 
     private SdkFinal mSdkInfo;
@@ -41,7 +44,7 @@ final class LaunchFactory extends SdkManager implements SIDL {
             throw new RuntimeException("context is null");
 
         this.mApplicationContext = base.getApplicationContext();
-        this.mServiceManager = new SdkServiceManager(this.mApplicationContext);
+        this.mServiceManager = new ServiceManager(this.mApplicationContext);
         this.mContextPath = new PMContextPatch(base);
         this.mSdkInfo = new SdkFinal(mApplicationContext, new SdkIdentityStd());
 
